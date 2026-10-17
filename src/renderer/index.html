@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data:; worker-src 'self'; connect-src 'self' wss://api.deepgram.com https://huggingface.co https://*.huggingface.co https://*.hf.co"
+    />
+    <title>Dictated</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span>Dictated</span>
+      </div>
+      <button id="new-meeting" class="button primary wide">New meeting</button>
+      <nav aria-label="Meetings">
+        <ul id="meeting-list" class="meeting-list"></ul>
+      </nav>
+      <button id="open-settings" class="button ghost wide">Settings</button>
+    </aside>
+
+    <main class="content">
+      <div id="detect-banner" class="banner" role="status" hidden>
+        <span id="detect-text"></span>
+        <div class="banner-actions">
+          <button id="detect-start" class="button primary small">Start transcribing</button>
+          <button id="detect-dismiss" class="button ghost small">Dismiss</button>
+        </div>
+      </div>
+
+      <section id="empty-state" class="empty-state">
+        <h1>No meeting selected</h1>
+        <p>Start a new meeting, or join a call: Dictated notices Zoom, Teams, Meet and others and offers to take notes.</p>
+      </section>
+
+      <section id="meeting-view" class="meeting" hidden>
+        <header class="meeting-header">
+          <input id="title" class="title-input" aria-label="Meeting title" />
+          <span id="app-badge" class="badge" hidden></span>
+          <div class="header-actions">
+            <div class="levels" aria-hidden="true">
+              <span class="level"><span id="level-me"></span></span>
+              <span class="level them"><span id="level-them"></span></span>
+            </div>
+            <span id="status" class="status"></span>
+            <button id="record" class="button record">Start recording</button>
+            <button id="delete" class="button ghost" title="Delete meeting">Delete</button>
+          </div>
+        </header>
+
+        <div class="columns">
+          <section class="panel">
+            <h2>My notes</h2>
+            <textarea id="notes" placeholder="Jot down what matters. Dictated fills in the rest from the transcript."></textarea>
+          </section>
+          <section class="panel">
+            <h2>Transcript <span class="legend"><i class="me"></i>Me <i class="them"></i>Them</span></h2>
+            <div id="transcript" class="transcript" aria-live="polite"></div>
+          </section>
+        </div>
+
+        <section class="panel summary-panel">
+          <div class="summary-header">
+            <h2>AI summary</h2>
+            <button id="summarize" class="button">Generate summary</button>
+          </div>
+          <div id="summary" class="summary"></div>
+        </section>
+      </section>
+    </main>
+
+    <dialog id="settings-dialog" class="dialog">
+      <form id="settings-form" method="dialog">
+        <h2>Settings</h2>
+
+        <fieldset>
+          <legend>Transcription</legend>
+          <label class="radio"><input type="radio" name="provider" value="local" /> On-device (Whisper): private, free, works offline</label>
+          <label class="radio"><input type="radio" name="provider" value="deepgram" /> Cloud (Deepgram Nova-3): fastest and most accurate</label>
+          <label>Whisper model <select id="whisper-model"></select></label>
+          <label>Deepgram API key <input id="deepgram-key" type="password" autocomplete="off" /></label>
+        </fieldset>
+
+        <fieldset>
+          <legend>AI summaries</legend>
+          <label>Anthropic API key <input id="anthropic-key" type="password" autocomplete="off" /></label>
+          <label class="checkbox"><input id="auto-summarize" type="checkbox" /> Summarize automatically when recording stops</label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Meetings</legend>
+          <label class="checkbox"><input id="auto-detect" type="checkbox" /> Detect calls and offer to start transcribing</label>
+        </fieldset>
+
+        <p class="hint">API keys are encrypted with your system keychain and never leave the main process, except as a short-lived Deepgram token.</p>
+        <div class="dialog-actions">
+          <button value="cancel" class="button ghost" formnovalidate>Cancel</button>
+          <button id="save-settings" value="save" class="button primary">Save</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="toast" class="toast" role="alert" hidden></div>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

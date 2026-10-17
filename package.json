@@ -1,0 +1,29 @@
+{
+  "name": "dictated",
+  "productName": "Dictated",
+  "version": "0.1.0",
+  "description": "Bot-free meeting transcription and AI notes for macOS and Windows.",
+  "main": "dist/main/main.js",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "start": "npm run build && electron .",
+    "dev": "npm run build && electron . --dev",
+    "smoke": "npm run build && electron . --smoke",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "smoke:whisper": "npm run build && electron . --smoke --smoke-whisper"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "0.131.0",
+    "@huggingface/transformers": "4.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "25.9.9",
+    "electron": "43.7.7",
+    "esbuild": "0.28.2",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  }
+}
