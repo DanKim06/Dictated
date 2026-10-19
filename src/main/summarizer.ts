@@ -16,7 +16,7 @@ Two to four sentences on the purpose and outcome of the meeting.
 ## Key points
 ## Decisions
 ## Action items
-Use "- [ ] Owner: task (due date if mentioned)". Use "Me" or "Them" when no name was given.
+Start each item with the person responsible, then the task and any due date, for example "- [ ] Sam: send the revised budget (Friday)". Use "Me" or "Them" when no name was given.
 ## Open questions`;
 
 export function buildSummaryPrompt(meeting: Meeting): string {
