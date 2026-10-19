@@ -2,9 +2,9 @@
 
 **Bot-free meeting transcription and AI notes for macOS and Windows.**
 
-Dictated listens to your calls the way you do, through your microphone and your computer's speakers, so no "notetaker bot" ever joins the meeting. It transcribes on-device with Whisper or in the cloud with Deepgram, tells you who said what, notices when a Zoom, Teams or Meet call starts, and turns your rough notes plus the transcript into a clean summary with decisions and action items using Claude.
+Dictated listens to your calls the way you do, through your microphone and your computer's speakers, so no "notetaker bot" ever joins the meeting. It transcribes on-device with Whisper or in the cloud with Deepgram, tells you who said what, notices when a Zoom, Teams or Meet call starts, and turns your rough notes plus the transcript into a clean summary with decisions and action items, using a free local model (Ollama) or Claude.
 
-> Built with Electron · TypeScript · Web Audio · Transformers.js (Whisper) · Deepgram · Claude API · Swift/Core Audio
+> Built with Electron · TypeScript · Web Audio · Transformers.js (Whisper) · Deepgram · Ollama · Claude API · Swift/Core Audio
 
 <!-- Add a screenshot or GIF here: ![Dictated recording a Zoom call](docs/screenshot.png) -->
 
@@ -34,7 +34,7 @@ Dictated listens to your calls the way you do, through your microphone and your 
 | **Live transcript** | Words appear while people talk; interim results are shown in italics when using Deepgram. |
 | **Echo removal** | When you're not on headphones, words the mic picks up from your speakers are detected and removed. |
 | **Meeting auto-detection** | Notices when Zoom, Teams, Webex, Slack, FaceTime, Discord or a browser call starts using the mic, and offers to start; stops automatically when the call ends. |
-| **AI summaries** | Claude merges your notes with the transcript into a summary, key points, decisions, action items and open questions, streamed live. |
+| **Switchable AI summaries** | Merges your notes with the transcript into a summary, key points, decisions, action items and open questions, streamed live. Runs free and private on your machine with Ollama, or on Claude for the best quality. |
 | **Local-first storage** | Meetings are JSON files on your machine; API keys are encrypted with the OS keychain. |
 
 ## How each feature works
@@ -81,9 +81,18 @@ The main process polls every 3 seconds for **which apps are using the microphone
 - Dedicated apps win over browsers, so a Zoom call isn't reported as "Chrome". Dictated's own capture is always excluded.
 - On detection you get a native notification and an in-app banner. When the call ends, recording stops and a summary is generated automatically.
 
-### 6. AI summaries with Claude
+### 6. AI summaries: local by default, Claude optional
 
-`src/main/summarizer.ts` sends the meeting title, **your notes** (treated as the outline of what mattered) and the de-echoed transcript to **Claude Opus 5.5** via the official Anthropic TypeScript SDK.
+Both summary engines share one system prompt and one prompt builder, so they produce the same Markdown structure and the UI doesn't care which one ran. The default makes Dictated **free and fully private end to end**: on-device Whisper plus a local model means no audio or text leaves the computer.
+
+**Local (Ollama).** `src/main/ollama.ts` talks to the [Ollama](https://ollama.com) server on `127.0.0.1:11434` with plain `fetch`.
+
+- **Streams** the reply as newline-delimited JSON. Network chunks can end mid-line, so the parser buffers the unfinished tail; a unit test splits a line mid-JSON to prove it.
+- **Sizes the context window to the transcript.** Ollama's default window is only a few thousand tokens and silently drops the *start* of anything longer, which would lose the first half of a meeting. `contextWindowFor()` estimates the tokens needed, then caps the window so the KV cache still fits on an 8 GB laptop.
+- Settings lists the models you have installed (`/api/tags`), and errors explain the fix ("run `ollama pull llama3.2`") instead of showing a raw HTTP status.
+- Strips inline `<think>` blocks that some reasoning models emit.
+
+**Cloud (Claude).** `src/main/summarizer.ts` sends the meeting title, **your notes** (treated as the outline of what mattered) and the de-echoed transcript to **Claude Opus 5.5** via the official Anthropic TypeScript SDK.
 
 - **Streams** the response so the summary renders while it is being written; tokens are forwarded to the UI over IPC.
 - Uses **adaptive thinking** with `effort: "medium"`, a good balance of quality and cost for summarization.
@@ -110,7 +119,7 @@ flowchart LR
     IPC["IPC handlers"]
     Store["Meeting store<br/>JSON files"]
     Settings["Settings<br/>keys via OS keychain"]
-    Sum["Summarizer<br/>Anthropic SDK"]
+    Sum["Summarizer<br/>Ollama or Anthropic SDK"]
     Det["Meeting detector<br/>3 s poll + state machine"]
     Probe["Swift Core Audio helper /<br/>Windows registry"]
   end
@@ -118,7 +127,8 @@ flowchart LR
   UI <-->|"contextBridge preload"| IPC
   IPC --> Store
   IPC --> Settings
-  IPC --> Sum -->|"streamed"| Claude[("Claude API")]
+  IPC --> Sum -->|"streamed, local"| Ollama[("Ollama<br/>localhost")]
+  Sum -->|"streamed, cloud"| Claude[("Claude API")]
   Det --> Probe
   Det -->|"notification + banner"| UI
 ```
@@ -144,6 +154,7 @@ flowchart LR
 | Electron + web audio instead of native audio addons | One codebase for macOS and Windows; loopback through a standard browser API; no C++ build chain | Less control than a native Core Audio / WASAPI addon (e.g. no hardware echo cancellation against system output) |
 | Channel-based speaker labels | Free, instant, and accurate for the Me/Them split | Can't tell apart several remote speakers ("Them" is everyone) |
 | Whisper in a Web Worker with WebGPU | Private and free, and fast on modern GPUs | First run downloads the model; CPU fallback is slower |
+| Local LLM (Ollama) as the default summarizer | Free, private, no account needed | Small models write weaker summaries than Claude and are slower on older machines |
 | Energy-based VAD | Tiny, dependency-free, easy to test | Less robust than a neural VAD in noisy rooms |
 | Polling for meeting detection | Simple and robust across OS versions | Up to ~3 s detection latency |
 | Pure functions for all logic | The state machine, parsers, chunker, echo removal and prompt builder are unit-tested without Electron | Slightly more plumbing between pure core and I/O shell |
@@ -152,7 +163,7 @@ flowchart LR
 ## Testing
 
 ```bash
-npm test               # 44 unit tests (Vitest)
+npm test               # 53 unit tests (Vitest)
 npm run typecheck      # strict TypeScript, including noUncheckedIndexedAccess
 npm run smoke          # boots the real Electron app hidden and fails on any console error
 npm run smoke:whisper  # also loads Whisper in the worker and transcribes a clip
@@ -166,6 +177,7 @@ The unit tests cover:
 - Deepgram URL building, message parsing and token exchange;
 - echo removal;
 - the summary prompt;
+- Ollama streaming (including lines split across chunks), error messages and context sizing;
 - the Markdown renderer's HTML escaping;
 - encrypted settings and meeting storage, including path-traversal rejection.
 
@@ -182,7 +194,9 @@ npm start
 
 Then open **Settings** and:
 1. Choose **On-device** transcription (no key needed), or **Cloud** with a [Deepgram API key](https://console.deepgram.com).
-2. Add an [Anthropic API key](https://console.anthropic.com) for AI summaries.
+2. For summaries, either:
+   - **Local (free, default):** install [Ollama](https://ollama.com), then run `ollama pull llama3.2`. On a machine with 16 GB of RAM or more, a larger model such as `qwen3:8b` writes noticeably better notes.
+   - **Cloud:** choose Claude and add an [Anthropic API key](https://console.anthropic.com) (pay per use, typically a few cents per meeting).
 
 **Permissions:**
 - **macOS:** allow Microphone, and Screen & System Audio Recording, for Dictated (in development the app appears as "Electron").
@@ -194,7 +208,8 @@ Then open **Settings** and:
 src/
   main/                 Electron main process (Node)
     main.ts             app lifecycle, window, app:// protocol, loopback handler, IPC
-    summarizer.ts       Claude summary: prompt, streaming, error mapping
+    summarizer.ts       shared summary prompt + Claude streaming and error mapping
+    ollama.ts           local summaries via Ollama: NDJSON streaming, context sizing
     deepgram-auth.ts    API key → short-lived token exchange
     settings.ts         settings + keychain-encrypted secrets
     storage.ts          meeting JSON store

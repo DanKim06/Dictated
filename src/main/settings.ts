@@ -20,6 +20,9 @@ interface StoredSettings extends Settings {
 }
 
 const PROVIDERS = new Set(["local", "deepgram"]);
+const SUMMARY_PROVIDERS = new Set(["local", "claude"]);
+// Ollama model tags look like "llama3.2", "qwen3:4b" or "library/model:tag".
+const OLLAMA_MODEL = /^[A-Za-z0-9._/-]{1,100}(:[A-Za-z0-9._-]{1,50})?$/;
 
 export class SettingsStore {
   private readonly file: string;
@@ -68,6 +71,15 @@ export class SettingsStore {
     }
     if (typeof rest.whisperModel === "string" && rest.whisperModel.trim()) {
       next.whisperModel = rest.whisperModel.trim();
+    }
+    if (rest.summaryProvider !== undefined) {
+      if (!SUMMARY_PROVIDERS.has(rest.summaryProvider)) {
+        throw new Error(`Unknown summary provider: ${rest.summaryProvider}`);
+      }
+      next.summaryProvider = rest.summaryProvider;
+    }
+    if (typeof rest.ollamaModel === "string" && OLLAMA_MODEL.test(rest.ollamaModel.trim())) {
+      next.ollamaModel = rest.ollamaModel.trim();
     }
     if (typeof rest.autoDetectMeetings === "boolean") next.autoDetectMeetings = rest.autoDetectMeetings;
     if (typeof rest.autoSummarize === "boolean") next.autoSummarize = rest.autoSummarize;

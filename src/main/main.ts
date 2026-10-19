@@ -17,6 +17,7 @@ import { IPC } from "../shared/ipc";
 import type { DetectedMeeting, Meeting, SettingsUpdate } from "../shared/types";
 import { getDeepgramAuth } from "./deepgram-auth";
 import { MeetingDetector } from "./meeting-detector";
+import { getOllamaStatus, summarizeWithOllama } from "./ollama";
 import { SettingsStore, type SecretCodec } from "./settings";
 import { MeetingStore } from "./storage";
 import { summarizeMeeting } from "./summarizer";
@@ -190,19 +191,26 @@ function registerIpc(): void {
   ipcMain.handle(IPC.deleteMeeting, (_event, id: string) => meetings.delete(id));
 
   ipcMain.handle(IPC.generateSummary, async (event, meetingId: string) => {
-    const apiKey = settings.getSecret("anthropicKey");
-    if (!apiKey) throw new Error("Add your Anthropic API key in Settings to generate summaries.");
     const meeting = meetings.get(meetingId);
     if (!meeting) throw new Error("Meeting not found.");
+    const onDelta = (text: string) => event.sender.send(IPC.summaryDelta, meetingId, text);
 
-    const summary = await summarizeMeeting(meeting, apiKey, (text) =>
-      event.sender.send(IPC.summaryDelta, meetingId, text),
-    );
+    const { summaryProvider, ollamaModel } = settings.get();
+    let summary: string;
+    if (summaryProvider === "claude") {
+      const apiKey = settings.getSecret("anthropicKey");
+      if (!apiKey) throw new Error("Add your Anthropic API key in Settings, or switch summaries to Local (Ollama).");
+      summary = await summarizeMeeting(meeting, apiKey, onDelta);
+    } else {
+      summary = await summarizeWithOllama(meeting, ollamaModel, onDelta);
+    }
     // Re-read so notes typed while the summary streamed aren't overwritten.
     const latest = meetings.get(meetingId) ?? meeting;
     meetings.save({ ...latest, summary });
     return summary;
   });
+
+  ipcMain.handle(IPC.ollamaStatus, () => getOllamaStatus());
 
   ipcMain.handle(IPC.deepgramAuth, async () => {
     const apiKey = settings.getSecret("deepgramKey");

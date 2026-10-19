@@ -32,10 +32,14 @@ export interface MeetingListItem {
 }
 
 export type TranscriptionProvider = "local" | "deepgram";
+/** "local" runs an open-source model through Ollama; "claude" calls the Anthropic API. */
+export type SummaryProvider = "local" | "claude";
 
 export interface Settings {
   transcriptionProvider: TranscriptionProvider;
   whisperModel: string;
+  summaryProvider: SummaryProvider;
+  ollamaModel: string;
   autoDetectMeetings: boolean;
   autoSummarize: boolean;
 }
@@ -58,6 +62,12 @@ export interface DeepgramAuth {
   credential: string;
 }
 
+export interface OllamaStatus {
+  running: boolean;
+  /** Installed model tags, e.g. "llama3.2:latest". */
+  models: string[];
+}
+
 export interface DetectedMeeting {
   app: string;
 }
@@ -65,6 +75,8 @@ export interface DetectedMeeting {
 export const DEFAULT_SETTINGS: Settings = {
   transcriptionProvider: "local",
   whisperModel: "onnx-community/whisper-base.en",
+  summaryProvider: "local",
+  ollamaModel: "llama3.2",
   autoDetectMeetings: true,
   autoSummarize: true,
 };
@@ -88,6 +100,7 @@ export interface DictatedApi {
   /** Streams the summary through `onSummaryDelta` and resolves with the full text. */
   generateSummary(meetingId: string): Promise<string>;
   onSummaryDelta(listener: (meetingId: string, text: string) => void): () => void;
+  getOllamaStatus(): Promise<OllamaStatus>;
 
   getDeepgramAuth(): Promise<DeepgramAuth>;
   setRecording(recording: boolean): void;

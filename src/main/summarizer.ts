@@ -57,14 +57,18 @@ export function describeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+export function assertSummarizable(meeting: Meeting): void {
+  if (meeting.transcript.length === 0 && meeting.notes.trim() === "") {
+    throw new Error("There is nothing to summarize yet. Record a meeting or write some notes first.");
+  }
+}
+
 export async function summarizeMeeting(
   meeting: Meeting,
   apiKey: string,
   onDelta: (text: string) => void,
 ): Promise<string> {
-  if (meeting.transcript.length === 0 && meeting.notes.trim() === "") {
-    throw new Error("There is nothing to summarize yet. Record a meeting or write some notes first.");
-  }
+  assertSummarizable(meeting);
 
   const client = new Anthropic({ apiKey });
   try {

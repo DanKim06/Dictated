@@ -24,6 +24,7 @@ const api: DictatedApi = {
 
   generateSummary: (meetingId) => ipcRenderer.invoke(IPC.generateSummary, meetingId),
   onSummaryDelta: (listener) => subscribe<[string, string]>(IPC.summaryDelta, listener),
+  getOllamaStatus: () => ipcRenderer.invoke(IPC.ollamaStatus),
 
   getDeepgramAuth: () => ipcRenderer.invoke(IPC.deepgramAuth),
   setRecording: (recording) => ipcRenderer.send(IPC.setRecording, recording),

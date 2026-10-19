@@ -8,6 +8,7 @@ export const IPC = {
   deleteMeeting: "meetings:delete",
   generateSummary: "summary:generate",
   summaryDelta: "summary:delta",
+  ollamaStatus: "ollama:status",
   deepgramAuth: "deepgram:auth",
   setRecording: "recording:set",
   meetingDetected: "meeting:detected",

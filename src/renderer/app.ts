@@ -46,6 +46,8 @@ const ui = {
   whisperModel: $<HTMLSelectElement>("whisper-model"),
   deepgramKey: $<HTMLInputElement>("deepgram-key"),
   anthropicKey: $<HTMLInputElement>("anthropic-key"),
+  ollamaModel: $<HTMLSelectElement>("ollama-model"),
+  ollamaHint: $<HTMLParagraphElement>("ollama-hint"),
   autoSummarize: $<HTMLInputElement>("auto-summarize"),
   autoDetect: $<HTMLInputElement>("auto-detect"),
   toast: $<HTMLDivElement>("toast"),
@@ -312,7 +314,7 @@ async function stopRecording(): Promise<void> {
     await saveNow();
     ui.status.textContent = "";
     renderMeeting();
-    if (settings.autoSummarize && settings.hasAnthropicKey && current.transcript.length > 0) {
+    if (settings.autoSummarize && canSummarize() && current.transcript.length > 0) {
       await summarize();
     }
   }
@@ -321,10 +323,15 @@ async function stopRecording(): Promise<void> {
 
 // ---------- summaries ----------
 
+/** Local summaries need no key; Ollama problems surface as errors from the main process. */
+function canSummarize(): boolean {
+  return settings.summaryProvider === "local" || settings.hasAnthropicKey;
+}
+
 async function summarize(): Promise<void> {
   if (!current || summarizing) return;
-  if (!settings.hasAnthropicKey) {
-    toast("Add your Anthropic API key in Settings to generate summaries.");
+  if (!canSummarize()) {
+    toast("Add your Anthropic API key in Settings, or switch summaries to Local (Ollama).");
     return;
   }
   const meetingId = current.id;
@@ -394,16 +401,41 @@ function openSettings(): void {
   ui.anthropicKey.placeholder = settings.hasAnthropicKey ? "Saved (type to replace)" : "sk-ant-…";
   ui.autoSummarize.checked = settings.autoSummarize;
   ui.autoDetect.checked = settings.autoDetectMeetings;
+  (ui.form.elements.namedItem("summary-provider") as RadioNodeList).value = settings.summaryProvider;
+  void loadOllamaModels();
   ui.dialog.showModal();
+}
+
+/** Fills the model picker with what's installed, keeping the saved choice even if Ollama is off. */
+async function loadOllamaModels(): Promise<void> {
+  const saved = settings.ollamaModel;
+  ui.ollamaModel.replaceChildren(new Option(saved, saved, true, true));
+  ui.ollamaHint.textContent = "Checking for Ollama…";
+  const status = await api.getOllamaStatus();
+  // "llama3.2" and "llama3.2:latest" are the same model.
+  const isSaved = (name: string) => name === saved || name === `${saved}:latest`;
+  const names = status.models.some(isSaved) ? status.models : [saved, ...status.models];
+  ui.ollamaModel.replaceChildren(...names.map((n) => new Option(n, n, false, isSaved(n))));
+
+  if (!status.running) {
+    ui.ollamaHint.textContent = "Ollama isn't running. Install it from ollama.com, then run: ollama pull llama3.2";
+  } else if (!status.models.some(isSaved)) {
+    ui.ollamaHint.textContent = `"${saved}" isn't installed yet. Run: ollama pull ${saved}`;
+  } else {
+    ui.ollamaHint.textContent = `Ollama is running with ${status.models.length} model(s) installed.`;
+  }
 }
 
 ui.dialog.addEventListener("close", async () => {
   if (ui.dialog.returnValue !== "save") return;
   const provider = (ui.form.elements.namedItem("provider") as RadioNodeList).value;
+  const summaryProvider = (ui.form.elements.namedItem("summary-provider") as RadioNodeList).value;
   try {
     settings = await api.updateSettings({
       transcriptionProvider: provider === "deepgram" ? "deepgram" : "local",
       whisperModel: ui.whisperModel.value,
+      summaryProvider: summaryProvider === "claude" ? "claude" : "local",
+      ollamaModel: ui.ollamaModel.value,
       autoSummarize: ui.autoSummarize.checked,
       autoDetectMeetings: ui.autoDetect.checked,
       ...(ui.deepgramKey.value.trim() ? { deepgramKey: ui.deepgramKey.value } : {}),
@@ -411,6 +443,8 @@ ui.dialog.addEventListener("close", async () => {
     });
     if (settings.transcriptionProvider === "deepgram" && !settings.hasDeepgramKey) {
       toast("Cloud transcription needs a Deepgram API key.");
+    } else if (settings.summaryProvider === "claude" && !settings.hasAnthropicKey) {
+      toast("Claude summaries need an Anthropic API key.");
     }
   } catch (error) {
     toast(errorMessage(error));

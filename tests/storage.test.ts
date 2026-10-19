@@ -65,4 +65,12 @@ describe("SettingsStore", () => {
     expect(store.update({ deepgramKey: null }).hasDeepgramKey).toBe(false);
     expect(() => store.update({ transcriptionProvider: "nope" as never })).toThrow(/Unknown transcription provider/);
   });
+
+  it("defaults to free local summaries and validates Ollama model names", () => {
+    const store = new SettingsStore(dir, codec);
+    expect(store.get().summaryProvider).toBe("local");
+    expect(store.update({ summaryProvider: "claude", ollamaModel: "qwen3:4b" }).ollamaModel).toBe("qwen3:4b");
+    expect(store.update({ ollamaModel: "bad model; rm -rf" }).ollamaModel).toBe("qwen3:4b");
+    expect(() => store.update({ summaryProvider: "gpt" as never })).toThrow(/Unknown summary provider/);
+  });
 });

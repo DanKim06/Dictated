@@ -86,6 +86,10 @@
 
         <fieldset>
           <legend>AI summaries</legend>
+          <label class="radio"><input type="radio" name="summary-provider" value="local" /> Local (Ollama): free and private, runs on this computer</label>
+          <label class="radio"><input type="radio" name="summary-provider" value="claude" /> Cloud (Claude Opus 5.5): best quality, pay per use</label>
+          <label>Ollama model <select id="ollama-model"></select></label>
+          <p id="ollama-hint" class="hint"></p>
           <label>Anthropic API key <input id="anthropic-key" type="password" autocomplete="off" /></label>
           <label class="checkbox"><input id="auto-summarize" type="checkbox" /> Summarize automatically when recording stops</label>
         </fieldset>
