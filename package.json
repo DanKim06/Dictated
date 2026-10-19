@@ -13,7 +13,8 @@
     "smoke": "npm run build && electron . --smoke",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
-    "smoke:whisper": "npm run build && electron . --smoke --smoke-whisper"
+    "smoke:whisper": "npm run build && electron . --smoke --smoke-whisper",
+    "smoke:ollama": "npm run build && electron . --smoke --smoke-ollama"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.131.0",

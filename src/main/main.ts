@@ -248,11 +248,17 @@ function runSmokeTest(window: BrowserWindow): void {
         : null;
       if (whisper !== null) console.log("Whisper probe:", whisper);
       const whisperOk = whisper === null || (typeof whisper === "string" && whisper.startsWith("ready"));
-      if (ready && whisperOk && errors.length === 0) {
+      // Calls Ollama through the real preload bridge and IPC handler.
+      const ollama = process.argv.includes("--smoke-ollama")
+        ? await window.webContents.executeJavaScript("window.dictated.getOllamaStatus()").catch(() => null)
+        : undefined;
+      if (ollama !== undefined) console.log("Ollama probe:", JSON.stringify(ollama));
+      const ollamaOk = ollama === undefined || (ollama?.running === true && ollama.models.length > 0);
+      if (ready && whisperOk && ollamaOk && errors.length === 0) {
         console.log("SMOKE OK");
         app.exit(0);
       } else {
-        console.error("SMOKE FAIL", { ready, whisper, errors });
+        console.error("SMOKE FAIL", { ready, whisper, ollama, errors });
         app.exit(1);
       }
     }, 2500);

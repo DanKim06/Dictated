@@ -411,7 +411,14 @@ async function loadOllamaModels(): Promise<void> {
   const saved = settings.ollamaModel;
   ui.ollamaModel.replaceChildren(new Option(saved, saved, true, true));
   ui.ollamaHint.textContent = "Checking for Ollama…";
-  const status = await api.getOllamaStatus();
+  let status;
+  try {
+    status = await api.getOllamaStatus();
+  } catch {
+    // A main process started before this build has no handler for the call.
+    ui.ollamaHint.textContent = "Couldn't check Ollama. Quit Dictated completely and start it again.";
+    return;
+  }
   // "llama3.2" and "llama3.2:latest" are the same model.
   const isSaved = (name: string) => name === saved || name === `${saved}:latest`;
   const names = status.models.some(isSaved) ? status.models : [saved, ...status.models];

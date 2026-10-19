@@ -167,6 +167,7 @@ npm test               # 53 unit tests (Vitest)
 npm run typecheck      # strict TypeScript, including noUncheckedIndexedAccess
 npm run smoke          # boots the real Electron app hidden and fails on any console error
 npm run smoke:whisper  # also loads Whisper in the worker and transcribes a clip
+npm run smoke:ollama   # also checks the UI can reach Ollama through IPC
 ```
 
 The unit tests cover:
