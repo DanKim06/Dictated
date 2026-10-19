@@ -187,7 +187,7 @@ The unit tests cover:
 **Requirements:** Node.js 22+. On macOS, the Xcode Command Line Tools (`xcode-select --install`) to compile the meeting-detection helper.
 
 ```bash
-git clone https://github.com/<your-username>/dictated.git
+git clone https://github.com/DanKim06/dictated.git
 cd dictated
 npm install
 npm start
