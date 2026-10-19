@@ -135,7 +135,12 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; color: 
 .level span { position: absolute; bottom: 0; left: 0; right: 0; height: 0; background: var(--me); transition: height 80ms linear; }
 .level.them span { background: var(--them); }
 
-.columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+/* The transcript is the main content; notes are a narrow side column for a few highlights. */
+.columns { display: grid; grid-template-columns: minmax(0, 2.4fr) minmax(200px, 1fr); gap: 16px; }
+@media (max-width: 900px) {
+  .columns { grid-template-columns: 1fr; }
+  .notes-panel textarea { min-height: 96px; }
+}
 .panel {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -148,7 +153,7 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; color: 
 }
 textarea {
   flex: 1;
-  min-height: 320px;
+  min-height: 120px;
   resize: vertical;
   border: 0;
   background: transparent;
